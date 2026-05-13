@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// SQLite: DATABASE_URL z. B. "file:./dev.db" (Pfad relativ zum Ordner mit schema.prisma)
+// PostgreSQL: `provider = "postgresql"` + `DATABASE_URL="postgresql://…"` und Migrationen ausführen
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  role         String   @default("ADMIN")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model MediaFile {
+  id           String   @id @default(cuid())
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  path         String   @unique
+  folder       String   @default("general")
+  width        Int?
+  height       Int?
+  createdAt    DateTime @default(now())
+
+  homepageHero  HomepageContent? @relation("HomeHeroMedia")
+  homepageAbout HomepageContent? @relation("HomeAboutMedia")
+  homepageCta   HomepageContent? @relation("HomeCtaMedia")
+
+  serviceHeroes Service[] @relation("ServiceHeroMedia")
+
+  serviceGalleryImages ServiceGalleryImage[]
+
+  projectImages ProjectImage[]
+
+  seoOgImages SEOSettings[] @relation("SeoOgMedia")
+}
+
+model FeaturedServiceHighlight {
+  id        String   @id @default(cuid())
+  serviceId String   @unique
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  badge     String   @default("")
+  sortOrder Int      @default(0)
+  visible   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([visible, sortOrder])
+}
+
+model ServiceCategory {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  services  Service[]
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  excerpt     String
+  intro       String
+  body        String   @default("[]")
+  sortOrder   Int      @default(0)
+  categoryId  String?
+  category    ServiceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  heroMediaId String?
+  heroMedia   MediaFile? @relation("ServiceHeroMedia", fields: [heroMediaId], references: [id], onDelete: SetNull)
+  gallery     ServiceGalleryImage[]
+  seo         SEOSettings?
+  featuredHighlight FeaturedServiceHighlight?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ServiceGalleryImage {
+  id          String    @id @default(cuid())
+  serviceId String
+  service     Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  mediaFileId String
+  mediaFile   MediaFile @relation(fields: [mediaFileId], references: [id], onDelete: Cascade)
+  sortOrder   Int       @default(0)
+
+  @@index([serviceId])
+}
+
+model ProjectCategory {
+  id        String              @id @default(cuid())
+  name      String
+  slug      String              @unique
+  sortOrder Int                 @default(0)
+  projects  ProjectOnCategory[]
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+}
+
+model ProjectOnCategory {
+  projectId  String
+  categoryId String
+  project    Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  category   ProjectCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, categoryId])
+}
+
+model Project {
+  id          String              @id @default(cuid())
+  slug        String              @unique
+  title       String
+  location    String              @default("") // optional, intern; nicht auf Referenz-Karten
+  description String              @default("")
+  sortOrder   Int                 @default(0)
+  images      ProjectImage[]
+  categories  ProjectOnCategory[]
+  seo         SEOSettings?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model ProjectImage {
+  id          String    @id @default(cuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  mediaFileId String
+  mediaFile   MediaFile @relation(fields: [mediaFileId], references: [id], onDelete: Cascade)
+  sortOrder   Int       @default(0)
+  kind        String    @default("GALLERY")
+
+  @@index([projectId])
+}
+
+model HomepageContent {
+  id String @id @default("default")
+
+  heroTitle       String
+  heroTitleAccent String @default("")
+  heroSubtitle    String
+  heroCta1Label   String
+  heroCta1Href    String
+  heroCta2Label   String
+  heroCta2Href    String
+  heroMediaId     String?   @unique
+  heroMedia       MediaFile?  @relation("HomeHeroMedia", fields: [heroMediaId], references: [id], onDelete: SetNull)
+
+  aboutTitlePrefix String
+  aboutTitleAccent String
+  aboutParagraph1  String
+  aboutParagraph2  String
+  aboutMediaId     String?   @unique
+  aboutMedia       MediaFile?  @relation("HomeAboutMedia", fields: [aboutMediaId], references: [id], onDelete: SetNull)
+
+  statisticsJson String @default("[]")
+
+  ctaBannerTitle       String
+  ctaBannerSubtitle    String @default("")
+  ctaBannerButtonLabel String
+  ctaBannerButtonHref  String
+  ctaBannerMediaId     String?   @unique
+  ctaBannerMedia       MediaFile?  @relation("HomeCtaMedia", fields: [ctaBannerMediaId], references: [id], onDelete: SetNull)
+
+  contactSectionTitle String
+  contactSectionLead  String
+
+  updatedAt DateTime @updatedAt
+}
+
+model SEOSettings {
+  id    String @id @default(cuid())
+  title String?
+  description String?
+  ogMediaId   String?
+  ogMedia     MediaFile? @relation("SeoOgMedia", fields: [ogMediaId], references: [id], onDelete: SetNull)
+  canonicalUrl String?
+
+  serviceId String? @unique
+  service   Service? @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  projectId String? @unique
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  pageKey String? @unique
+}
+
+model ContactSettings {
+  id                 String   @id @default("default")
+  companyName        String
+  legalName          String
+  phone              String
+  phoneRaw           String
+  email              String
+  whatsappUrl        String
+  addressStreet      String
+  addressZip         String
+  addressCity        String
+  addressCountry     String
+  hours              String
+  siteUrl            String
+  defaultDescription String
+  updatedAt          DateTime @updatedAt
+}

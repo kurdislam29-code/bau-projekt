@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    @apply bg-white text-zinc-800;
+    font-feature-settings: "kern" 1, "liga" 1;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply text-zinc-900 font-semibold tracking-tight;
+  }
+}
